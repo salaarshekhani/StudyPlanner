@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyPlanner - Subjects</title>
+    <link rel="icon" href="images/favicon.svg" type="image/svg+xml">
+    <script>(function(){try{var t=localStorage.getItem('sp_theme'); if(t) document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+    <link rel="stylesheet" href="style.css">
+    <script src="state.js"></script>
+    <script src="effects.js"></script>
+</head>
+<body>
+
+<nav>
+    <a href="index.html" class="brand">StudyPlanner</a>
+    <div class="nav-links">
+        <a href="index.html">Overview</a>
+        <a href="subjects.html" class="active">Subjects</a>
+        <a href="timetable.html">Timetable</a>
+        <a href="pomodoro.html">Pomodoro</a>
+        <a href="todo.html">To-Do</a>
+        <a href="about.html">About</a>
+    </div>
+    <div class="nav-right">
+        <button id="theme-toggle" class="btn btn-remove" aria-label="Toggle theme">🌓</button>
+        <a id="account-btn" class="btn btn-remove" href="account.html" aria-label="Account">Account</a>
+    </div>
+</nav>
+
+<div class="container">
+    <h1>Subjects</h1>
+    <p class="page-subtitle">Add subjects with exam dates and difficulty. This drives your timetable.</p>
+
+    <div class="card">
+        <div class="card-title">Add a Subject</div>
+        <div class="alert alert-error" id="form-alert"></div>
+        <div class="form-row">
+            <div class="field">
+                <label for="inp-name">Subject Name</label>
+                <input type="text" id="inp-name" placeholder="e.g. Pakistan History" style="min-width:190px;">
+            </div>
+            <div class="field">
+                <label for="inp-date">Exam Date</label>
+                <input type="date" id="inp-date">
+            </div>
+            <div class="field">
+                <label for="inp-goal">Goal</label>
+                <input type="text" id="inp-goal" placeholder="e.g. Finish chapters 1-4">
+            </div>
+            <div class="field">
+                <label for="inp-diff">Difficulty</label>
+                <select id="inp-diff">
+                    <option value="Easy">Easy</option>
+                    <option value="Medium" selected>Medium</option>
+                    <option value="Hard">Hard</option>
+                </select>
+            </div>
+            <div class="field" style="justify-content:flex-end;">
+                <button class="btn btn-primary" onclick="addSubject()">Add Subject</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Your Subjects</div>
+        <div id="subject-list"></div>
+    </div>
+</div>
+
+<script>
+var COLORS = ['#c1121f','#2a9d8f','#e9c46a','#264653','#6d6875','#023e8a','#606c38','#ae2012'];
+var SESSIONS_PER_WEEK = { Easy:1, Medium:2, Hard:3 };
+
+function getState() {
+    if (window.SP) return window.SP.getState();
+    try { var r = localStorage.getItem('sp_v1'); if (r) return JSON.parse(r); } catch (e) {}
+    return { subjects:[], completedSessions:{}, pomodoroLog:{}, todos:{}, weekOffset:0, selectedSubject:null, pomoConfig:{focus:25,short:5,long:15} };
+}
+function saveState(s) {
+    if (window.SP) {
+        window.SP.saveState(s);
+    } else {
+        try { localStorage.setItem('sp_v1', JSON.stringify(s)); }
+        catch(e) { alert('Could not save: localStorage may be full or disabled.'); }
+    }
+}
+function daysUntil(d) {
+    var t=new Date(); t.setHours(0,0,0,0);
+    var x=new Date(d); x.setHours(0,0,0,0);
+    return Math.max(0, Math.ceil((x-t)/86400000));
+}
+function fmtDate(d) {
+    return new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+}
+function totalSessions(s) {
+    return Math.max(1, Math.ceil(daysUntil(s.examDate)/7) * SESSIONS_PER_WEEK[s.difficulty]);
+}
+function showAlert(id, msg, type) {
+    var el=document.getElementById(id); if(!el) return;
+    el.textContent=msg; el.className='alert '+(type==='success'?'alert-success':'alert-error');
+    el.style.display='block'; setTimeout(function(){el.style.display='none';},3000);
+}
+function emptyStateNotice(msg) {
+    return '<div class="notice-box"><p>'+msg+'</p></div>';
+}
+var S = getState();
+
+function render() {
+    var list = document.getElementById('subject-list');
+    if (!S.subjects.length) {
+        list.innerHTML = emptyStateNotice('No subjects yet. Use the form above to get started.');
+        return;
+    }
+    list.innerHTML = S.subjects.map(function(s) {
+        var days  = daysUntil(s.examDate);
+        var done  = (S.completedSessions[s.id]||[]).length;
+        var total = totalSessions(s);
+        var pct   = total > 0 ? Math.min(100, Math.round((done/total)*100)) : 0;
+        return '<div class="subject-row">'+
+            '<div class="subject-left">'+
+            '<span class="dot" style="background:'+s.color+'"></span>'+
+            '<div>'+
+            '<div class="subject-name">'+s.name+'</div>'+
+            '<div class="subject-meta">Exam: '+fmtDate(s.examDate)+' &nbsp;|&nbsp; '+days+' day'+(days!==1?'s':'')+' left</div>'+
+            '<div class="progress-bar" style="width:160px;"><div class="progress-fill" style="width:'+pct+'%;background:'+s.color+'"></div></div>'+
+            '<div style="font-size:0.72rem;color:#888;margin-top:2px;">'+done+' / '+total+' sessions ('+pct+'%)</div>'+
+            '</div></div>'+
+            '<div class="subject-right">'+
+            '<span class="badge badge-'+s.difficulty+'">'+s.difficulty+'</span>'+
+            '<button class="btn-remove" onclick="removeSubject(\''+s.id+'\')">Remove</button>'+
+            '</div></div>';
+    }).join('');
+}
+
+function addSubject() {
+    var name = document.getElementById('inp-name').value.trim();
+    var date = document.getElementById('inp-date').value;
+    var goal = document.getElementById('inp-goal').value.trim();
+    var diff = document.getElementById('inp-diff').value;
+
+    if (!name) { showAlert('form-alert','Please enter a subject name.','error'); document.getElementById('inp-name').focus(); return; }
+    if (!date) { showAlert('form-alert','Please select an exam date.','error'); document.getElementById('inp-date').focus(); return; }
+    if (daysUntil(date) === 0) { showAlert('form-alert','Exam date must be in the future.','error'); return; }
+    for (var i=0; i<S.subjects.length; i++) {
+        if (S.subjects[i].name.toLowerCase() === name.toLowerCase()) {
+            showAlert('form-alert','That subject already exists.','error'); return;
+        }
+    }
+
+    var sub = { id:Date.now().toString(), name:name, examDate:date, difficulty:diff, color:COLORS[S.subjects.length%COLORS.length], goal: goal };
+    S.subjects.push(sub);
+    S.completedSessions[sub.id] = [];
+    S.pomodoroLog[sub.id]       = 0;
+    S.todos[sub.id]             = [];
+    saveState(S);
+
+    document.getElementById('inp-name').value = '';
+    document.getElementById('inp-date').value = '';
+    document.getElementById('inp-goal').value = '';
+    document.getElementById('inp-diff').value = 'Medium';
+    showAlert('form-alert', sub.name+' added.', 'success');
+    render();
+}
+
+function removeSubject(id) {
+    if (!confirm('Remove this subject? All its tasks and sessions will be lost.')) return;
+    S.subjects = S.subjects.filter(function(s){ return s.id!==id; });
+    delete S.completedSessions[id];
+    delete S.pomodoroLog[id];
+    delete S.todos[id];
+    if (S.selectedSubject===id) S.selectedSubject=null;
+    saveState(S);
+    render();
+}
+
+document.getElementById('inp-name').addEventListener('keydown', function(e){ if(e.key==='Enter') addSubject(); });
+
+render();
+if (window.SP) {
+    window.onRemoteStateLoaded = function() {
+        S = window.SP.getState();
+        render();
+    };
+}
+</script>
+<footer>Made by <span>Salaar Adnan Shekhani</span></footer>
+<script src="theme-toggle.js"></script>
+<script src="auth.js"></script>
+</body>
+</html>
