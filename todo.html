@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyPlanner - To-Do</title>
+    <link rel="icon" href="images/favicon.svg" type="image/svg+xml">
+    <script>(function(){try{var t=localStorage.getItem('sp_theme'); if(t) document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+    <link rel="stylesheet" href="style.css">
+    <script src="state.js"></script>
+    <script src="effects.js"></script>
+</head>
+<body>
+
+<nav>
+    <a href="index.html" class="brand">StudyPlanner</a>
+    <div class="nav-links">
+        <a href="index.html">Overview</a>
+        <a href="subjects.html">Subjects</a>
+        <a href="timetable.html">Timetable</a>
+        <a href="pomodoro.html">Pomodoro</a>
+        <a href="todo.html" class="active">To-Do</a>
+        <a href="about.html">About</a>
+    </div>
+    <div class="nav-right">
+        <button id="theme-toggle" class="btn btn-remove" aria-label="Toggle theme">🌓</button>
+        <a id="account-btn" class="btn btn-remove" href="account.html" aria-label="Account">Account</a>
+    </div>
+</nav>
+
+<div class="container">
+    <h1>To-Do List</h1>
+    <p class="page-subtitle">Revision tasks organised by subject.</p>
+
+    <div id="page-content"></div>
+</div>
+
+<script>
+function getState() {
+    if (window.SP) return window.SP.getState();
+    try { var r=localStorage.getItem('sp_v1'); if(r) return JSON.parse(r); } catch(e) {}
+    return { subjects:[], completedSessions:{}, pomodoroLog:{}, todos:{}, weekOffset:0, selectedSubject:null, pomoConfig:{focus:25,short:5,long:15} };
+}
+function saveState(s) {
+    if (window.SP) {
+        window.SP.saveState(s);
+    } else {
+        try { localStorage.setItem('sp_v1', JSON.stringify(s)); }
+        catch(e) { alert('Could not save: localStorage may be full or disabled.'); }
+    }
+}
+function emptyStateNotice(msg) {
+    return '<div class="notice-box"><p>'+msg+'</p></div>';
+}
+
+var S = getState();
+
+function render() {
+    var pc = document.getElementById('page-content');
+
+    if (!S.subjects.length) {
+        pc.innerHTML = emptyStateNotice('No subjects found. <a href="subjects.html">Add subjects first</a> to manage tasks.');
+        return;
+    }
+
+    var validIds = S.subjects.map(function(s){ return s.id; });
+    if (S.selectedSubject && validIds.indexOf(S.selectedSubject)===-1) S.selectedSubject=null;
+
+    var sideItems = S.subjects.map(function(s){
+        var tasks = S.todos[s.id]||[];
+        var done  = tasks.filter(function(t){ return t.done; }).length;
+        var active= S.selectedSubject===s.id;
+        return '<li><a href="#" onclick="selectSubject(\''+s.id+'\');return false;" class="'+(active?'active':'')+'">'+
+            '<span class="dot" style="background:'+s.color+'"></span>'+
+            '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+s.name+'</span>'+
+            '<span class="sidebar-count">'+done+'/'+tasks.length+'</span>'+
+            '</a></li>';
+    }).join('');
+
+    var panelTitle, addRow, taskArea;
+
+    if (!S.selectedSubject) {
+        panelTitle = 'Select a subject';
+        addRow     = '';
+        taskArea   = emptyStateNotice('Pick a subject on the left to view and add tasks.');
+    } else {
+        var subj = null;
+        S.subjects.forEach(function(s){ if(s.id===S.selectedSubject) subj=s; });
+
+        panelTitle = subj.name+' - Tasks';
+        addRow =
+            '<div class="add-row">'+
+            '<input type="text" id="task-inp" placeholder="New task…" style="flex:1;min-width:140px;" onkeydown="if(event.key===\'Enter\') addTask()">'+
+            '<select id="task-pri" style="min-width:90px;">'+
+            '<option value="Normal">Normal</option>'+
+            '<option value="Urgent">Urgent</option>'+
+            '<option value="Low">Low</option>'+
+            '</select>'+
+            '<button class="btn btn-primary" onclick="addTask()">Add</button>'+
+            '</div>';
+
+        var tasks = S.todos[S.selectedSubject]||[];
+        if (!tasks.length) {
+            taskArea = emptyStateNotice('No tasks yet for this subject. Add one above.');
+        } else {
+            var priOrder={Urgent:0,Normal:1,Low:2};
+            var sorted=tasks.slice().sort(function(a,b){
+                if(a.done!==b.done) return a.done?1:-1;
+                return priOrder[a.priority]-priOrder[b.priority];
+            });
+            taskArea = sorted.map(function(t){
+                return '<div class="task-item'+(t.done?' done':'')+'">'+
+                    '<input type="checkbox"'+(t.done?' checked':'')+' onchange="toggleTask(\''+t.id+'\')" style="accent-color:#c1121f;">'+
+                    '<span class="task-text'+(t.done?' struck':'')+'">'+t.text+'</span>'+
+                    '<span class="badge badge-'+t.priority+'">'+t.priority+'</span>'+
+                    '<button class="btn-remove" onclick="deleteTask(\''+t.id+'\')">Remove</button>'+
+                    '</div>';
+            }).join('');
+        }
+    }
+
+    pc.innerHTML =
+        '<div class="todo-layout">'+
+        '<div class="card" style="padding:0.75rem;">'+
+        '<div style="font-size:0.78rem;font-weight:bold;text-transform:uppercase;letter-spacing:0.04em;color:#888;padding:0.3rem 0.75rem 0.6rem;">Subjects</div>'+
+        '<ul class="sidebar-links">'+sideItems+'</ul>'+
+        '</div>'+
+        '<div>'+
+        '<div class="card">'+
+        '<div class="card-title" id="panel-heading">'+panelTitle+'</div>'+
+        addRow+
+        '<div id="task-list">'+taskArea+'</div>'+
+        '</div>'+
+        '<div class="card">'+
+        '<div class="card-title">Reminders</div>'+
+        '<div style="margin-bottom:0.75rem;">'+
+            '<div class="add-row">'+
+                '<input type="text" id="rem-text" placeholder="Reminder text…" style="flex:1;min-width:140px;">'+
+                '<input type="datetime-local" id="rem-dt" style="min-width:190px;">'+
+                '<select id="rem-subj" style="min-width:120px;">'+
+                    '<option value="">(no subject)</option>'+
+                '</select>'+
+                '<select id="rem-repeat" style="min-width:110px;">'+
+                    '<option value="none">No repeat</option>'+
+                    '<option value="daily">Daily</option>'+
+                    '<option value="weekly">Weekly</option>'+
+                '</select>'+
+                '<button class="btn btn-primary" id="add-rem-btn">Add</button>'+
+            '</div>'+
+        '</div>'+
+        '<div id="reminders-list"></div>'+
+        '</div>'+
+        '</div>'+
+        '</div>';
+
+    var remSel = document.getElementById('rem-subj');
+    remSel.innerHTML = '<option value="">(no subject)</option>' + S.subjects.map(function(s){ return '<option value="'+s.id+'">'+s.name+'</option>'; }).join('');
+    document.getElementById('add-rem-btn').addEventListener('click', function(){ addReminder(); });
+    renderReminders();
+}
+
+function ensureReminders() {
+    if (!S.reminders) S.reminders = [];
+}
+
+function addReminder() {
+    ensureReminders();
+    var text = (document.getElementById('rem-text')||{}).value || '';
+    var dt = (document.getElementById('rem-dt')||{}).value || '';
+    var subj = (document.getElementById('rem-subj')||{}).value || '';
+    var repeat = (document.getElementById('rem-repeat')||{}).value || 'none';
+    if (!text || !dt) { alert('Enter reminder text and date/time'); return; }
+    var r = { id: Date.now().toString(), text: text, time: dt, subjectId: subj || null, repeat: repeat, enabled: true, createdAt: (new Date()).toISOString() };
+    S.reminders.push(r);
+    saveState(S);
+    render();
+    scheduleReminders();
+}
+
+function deleteReminder(id) {
+    ensureReminders();
+    S.reminders = (S.reminders||[]).filter(function(r){ return r.id !== id; });
+    saveState(S);
+    render();
+}
+
+function toggleReminder(id) {
+    ensureReminders();
+    S.reminders.forEach(function(r){ if (r.id===id) r.enabled = !r.enabled; });
+    saveState(S);
+    renderReminders();
+    scheduleReminders();
+}
+
+function renderReminders() {
+    ensureReminders();
+    var list = document.getElementById('reminders-list');
+    if (!list) return;
+    if (!S.reminders.length) { list.innerHTML = emptyStateNotice('No reminders yet.'); return; }
+    list.innerHTML = S.reminders.map(function(r){
+        var subjName = '';
+        if (r.subjectId) { var s = S.subjects.find(function(x){ return x.id===r.subjectId; }); subjName = s?(' - '+s.name):''; }
+        return '<div class="countdown-item">'+
+            '<div style="flex:1">'+
+                '<div style="font-weight:bold">'+escapeHtml(r.text)+subjName+'</div>'+
+                '<div style="font-size:0.85rem;color:var(--muted-2)">'+(r.time||' ')+' '+(r.repeat!=='none'?(' ('+r.repeat+')'):'')+'</div>'+
+            '</div>'+
+            '<div style="display:flex;align-items:center;gap:6px">'+
+                '<button class="btn-remove" onclick="toggleReminder(\''+r.id+'\')">'+(r.enabled?'Disable':'Enable')+'</button>'+
+                '<button class="btn-remove" onclick="deleteReminder(\''+r.id+'\')">Delete</button>'+
+            '</div>'+
+        '</div>';
+    }).join('');
+}
+
+function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+var _reminderTimers = {};
+function scheduleReminders() {
+    ensureReminders();
+    Object.keys(_reminderTimers).forEach(function(k){ clearTimeout(_reminderTimers[k]); delete _reminderTimers[k]; });
+    if (!('Notification' in window)) return;
+    S.reminders.forEach(function(r){
+        if (!r.enabled) return;
+        var when = new Date(r.time);
+        var now = new Date();
+        var ms = when - now;
+        if (ms <= 0) return;
+        var id = r.id;
+        _reminderTimers[id] = setTimeout(function(){
+            showNotification(r);
+            if (r.repeat === 'daily') {
+                var next = new Date(when);
+                next.setDate(next.getDate()+1);
+                r.time = formatLocalDatetime(next);
+                saveState(S);
+                renderReminders();
+                scheduleReminders();
+            } else if (r.repeat === 'weekly') {
+                var next = new Date(when);
+                next.setDate(next.getDate()+7);
+                r.time = formatLocalDatetime(next);
+                saveState(S);
+                renderReminders();
+                scheduleReminders();
+            }
+        }, ms);
+    });
+}
+
+function showNotification(r) {
+    if (Notification.permission === 'granted') {
+        try {
+            var opts = { body: r.text, tag: r.id };
+            if (r.subjectId) {
+                var s = S.subjects.find(function(x){ return x.id===r.subjectId; });
+                if (s) opts.body += '\nSubject: '+s.name;
+            }
+            new Notification('StudyPlanner Reminder', opts);
+        } catch (e) { console.warn('Notification failed', e); alert('Reminder: '+r.text); }
+    } else {
+        alert('Reminder: '+r.text);
+    }
+}
+
+function formatLocalDatetime(d) {
+    var pad = function(n){ return (n<10?'0':'')+n; };
+    return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+}
+
+function selectSubject(id) {
+    S.selectedSubject=id; saveState(S); render();
+}
+
+function addTask() {
+    var inp=document.getElementById('task-inp');
+    var text=(inp?inp.value.trim():'');
+    if (!text||!S.selectedSubject) return;
+    var pri=document.getElementById('task-pri').value;
+    if (!S.todos[S.selectedSubject]) S.todos[S.selectedSubject]=[];
+    S.todos[S.selectedSubject].push({id:Date.now().toString(),text:text,priority:pri,done:false});
+    saveState(S); render();
+    var ni=document.getElementById('task-inp'); if(ni) ni.focus();
+}
+
+function toggleTask(id) {
+    var tasks=S.todos[S.selectedSubject]||[];
+    tasks.forEach(function(t){ if(t.id===id) { t.done=!t.done; if(t.done && window.SPEffects) window.SPEffects.celebrate(); } });
+    saveState(S); render();
+}
+
+function deleteTask(id) {
+    S.todos[S.selectedSubject]=(S.todos[S.selectedSubject]||[]).filter(function(t){ return t.id!==id; });
+    saveState(S); render();
+}
+
+render();
+if (window.Notification && Notification.permission !== 'granted') {
+    try { Notification.requestPermission().then(function(){ scheduleReminders(); }); } catch(e) { }
+} else { scheduleReminders(); }
+if (window.SP) {
+    window.onRemoteStateLoaded = function() {
+        S = window.SP.getState();
+        render();
+        scheduleReminders();
+    };
+}
+</script>
+<footer>Made by <span>Salaar Adnan Shekhani</span></footer>
+<script src="theme-toggle.js"></script>
+<script src="auth.js"></script>
+</body>
+</html>

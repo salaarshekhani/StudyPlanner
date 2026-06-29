@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyPlanner - Pomodoro</title>
+    <link rel="icon" href="images/favicon.svg" type="image/svg+xml">
+    <script>(function(){try{var t=localStorage.getItem('sp_theme'); if(t) document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+    <link rel="stylesheet" href="style.css">
+    <script src="state.js"></script>
+    <script src="effects.js"></script>
+</head>
+<body>
+
+<nav>
+    <a href="index.html" class="brand">StudyPlanner</a>
+    <div class="nav-links">
+        <a href="index.html">Overview</a>
+        <a href="subjects.html">Subjects</a>
+        <a href="timetable.html">Timetable</a>
+        <a href="pomodoro.html" class="active">Pomodoro</a>
+        <a href="todo.html">To-Do</a>
+        <a href="about.html">About</a>
+    </div>
+    <div class="nav-right">
+        <button id="theme-toggle" class="btn btn-remove" aria-label="Toggle theme">🌓</button>
+        <a id="account-btn" class="btn btn-remove" href="account.html" aria-label="Account">Account</a>
+    </div>
+</nav>
+
+<div class="container">
+    <h1>Pomodoro Timer</h1>
+    <p class="page-subtitle">25-min focus followed with a 5-min break. After 4 sessions a 15-min long break.</p>
+
+    <div class="pomo-layout">
+
+        <div class="card" style="text-align:center;padding:1.75rem 1.5rem;">
+            <div class="timer-phase" id="timer-phase">Focus Session</div>
+            <div class="timer-display" id="timer-display">25:00</div>
+            <div class="timer-cycle" id="timer-cycle">Session 1 of 4</div>
+            <div class="timer-subject-row">
+                <label for="pomo-subject">Subject</label>
+                <select id="pomo-subject"><option value="">- no subject -</option></select>
+            </div>
+            <div class="timer-controls">
+                <button class="btn btn-primary" id="pomo-btn" onclick="toggleTimer()">Start</button>
+                <button class="btn" onclick="resetTimer()">Reset</button>
+            </div>
+            <div class="pomo-config">
+                <p>                      </p>
+                <label>Session Length <input id="focus-length" type="number" min="5" max="60"></label>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Session Log</div>
+            <div id="pomo-log"></div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+var DEFAULT_STATE = { subjects:[], completedSessions:{}, pomodoroLog:{}, todos:{}, weekOffset:0, selectedSubject:null, pomoConfig:{focus:25,short:5,long:15} };
+function getState() {
+    if (window.SP) return window.SP.getState();
+    try { var r=localStorage.getItem('sp_v1'); if(r) return JSON.parse(r); } catch(e) {}
+    return DEFAULT_STATE;
+}
+function saveState(s) {
+    if (window.SP) {
+        window.SP.saveState(s);
+    } else {
+        try { localStorage.setItem('sp_v1', JSON.stringify(s)); }
+        catch(e) { alert('Could not save: localStorage may be full or disabled.'); }
+    }
+}
+function emptyStateNotice(msg) {
+    return '<div class="notice-box"><p>'+msg+'</p></div>';
+}
+function getPhaseSeconds(phase) {
+    var cfg = (S && S.pomoConfig) ? S.pomoConfig : DEFAULT_STATE.pomoConfig;
+    if (phase==='focus') return (cfg.focus || 25) * 60;
+    if (phase==='short') return (cfg.short || 5) * 60;
+    return (cfg.long || 15) * 60;
+}
+
+var S = getState();
+
+if (!S.subjects.length) {
+    document.getElementById('pomo-log').innerHTML =
+        emptyStateNotice('No subjects found. <a href="subjects.html">Add subjects</a> to enable session logging. The timer still works.');
+} else {
+    var sel = document.getElementById('pomo-subject');
+    S.subjects.forEach(function(s){
+        var o=document.createElement('option'); o.value=s.id; o.text=s.name; sel.appendChild(o);
+    });
+}
+
+var PHASES = {
+    focus: { label: 'Focus Session' },
+    short: { label: 'Short Break' },
+    long: { label: 'Long Break' }
+};
+
+var timer = { interval:null, running:false, secs:getPhaseSeconds('focus'), phase:'focus', cyclePos:0 };
+
+function updateUI() {
+    var m=String(Math.floor(timer.secs/60)).padStart(2,'0');
+    var s=String(timer.secs%60).padStart(2,'0');
+    document.getElementById('timer-display').textContent = m+':'+s;
+    document.getElementById('timer-phase').textContent   = PHASES[timer.phase].label;
+    document.getElementById('timer-cycle').textContent   =
+        timer.phase==='focus' ? 'Session '+(timer.cyclePos+1)+' of 4' : 'Take a break!';
+    document.title = m+':'+s+' - Pomodoro';
+}
+
+function toggleTimer() {
+    if (timer.running) {
+        clearInterval(timer.interval);
+        timer.running=false;
+        document.getElementById('pomo-btn').textContent='Resume';
+    } else {
+        timer.running=true;
+        document.getElementById('pomo-btn').textContent='Pause';
+        timer.interval=setInterval(function(){
+            timer.secs--;
+            if (timer.secs<=0){ clearInterval(timer.interval); timer.running=false; onPhaseEnd(); }
+            updateUI();
+        },1000);
+    }
+}
+
+function onPhaseEnd() {
+    if (timer.phase==='focus') {
+        var subId=document.getElementById('pomo-subject').value;
+        if (subId) {
+            S.pomodoroLog[subId]=(S.pomodoroLog[subId]||0)+1;
+            saveState(S);
+            renderLog();
+        }
+        if (window.SPEffects) window.SPEffects.celebrate();
+        timer.cyclePos++;
+        timer.phase = timer.cyclePos>=4 ? 'long' : 'short';
+        if (timer.cyclePos>=4) timer.cyclePos=0;
+    } else {
+        timer.phase='focus';
+    }
+    timer.secs=getPhaseSeconds(timer.phase);
+    document.getElementById('pomo-btn').textContent='Start';
+    if (Notification && Notification.permission==='granted')
+        new Notification('StudyPlanner',{body:PHASES[timer.phase].label+' starting!'});
+    updateUI();
+}
+
+function resetTimer() {
+    clearInterval(timer.interval);
+    timer={interval:null,running:false,secs:getPhaseSeconds('focus'),phase:'focus',cyclePos:0};
+    document.getElementById('pomo-btn').textContent='Start';
+    document.title='StudyPlanner - Pomodoro';
+    updateUI();
+}
+
+function renderLog() {
+    var log=document.getElementById('pomo-log');
+    var entries=S.subjects.filter(function(s){ return S.pomodoroLog[s.id]>0; });
+    if (!entries.length) {
+        log.innerHTML=emptyStateNotice('No sessions logged yet. Start the timer to begin.');
+        return;
+    }
+    log.innerHTML=entries.map(function(s){
+        var c=S.pomodoroLog[s.id];
+        return '<div class="log-entry">'+
+            '<span class="log-subject"><span class="dot" style="background:'+s.color+';display:inline-block;vertical-align:middle;margin-right:5px;"></span>'+s.name+'</span>'+
+            '<span class="log-count">'+c+' session'+(c!==1?'s':'')+'</span>'+
+            '</div>';
+    }).join('');
+}
+
+function updatePomodoroSubjectList() {
+    var sel = document.getElementById('pomo-subject');
+    sel.innerHTML = '<option value="">- no subject -</option>';
+    S.subjects.forEach(function(s){
+        var o=document.createElement('option'); o.value=s.id; o.text=s.name; sel.appendChild(o);
+    });
+}
+
+function initPomodoroConfig() {
+    var cfg = S.pomoConfig || DEFAULT_STATE.pomoConfig;
+    document.getElementById('focus-length').value = cfg.focus;
+
+    ['focus-length'].forEach(function(id){
+        document.getElementById(id).addEventListener('change', updateConfig);
+    });
+}
+
+function updateConfig() {
+    S.pomoConfig = {
+        focus: parseInt(document.getElementById('focus-length').value, 10) || 25
+    };
+    saveState(S);
+    timer.secs = getPhaseSeconds(timer.phase);
+    updateUI();
+}
+
+if (Notification && Notification.permission==='default') Notification.requestPermission();
+
+updateUI();
+renderLog();
+updatePomodoroSubjectList();
+initPomodoroConfig();
+if (window.SP) {
+    window.onRemoteStateLoaded = function() {
+        S = window.SP.getState();
+        updatePomodoroSubjectList();
+        initPomodoroConfig();
+        renderLog();
+        updateUI();
+    };
+}
+</script>
+<footer>Made by <span>Salaar Adnan Shekhani</span></footer>
+<script src="theme-toggle.js"></script>
+<script src="auth.js"></script>
+</body>
+</html>
