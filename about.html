@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyPlanner - About</title>
+    <link rel="icon" href="images/favicon.svg" type="image/svg+xml">
+    <script>(function(){try{var t=localStorage.getItem('sp_theme'); if(t) document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+    <a href="index.html" class="brand">StudyPlanner</a>
+    <div class="nav-links">
+        <a href="index.html">Overview</a>
+        <a href="subjects.html">Subjects</a>
+        <a href="timetable.html">Timetable</a>
+        <a href="pomodoro.html">Pomodoro</a>
+        <a href="todo.html">To-Do</a>
+        <a href="about.html" class="active">About</a>
+    </div>
+    <div class="nav-right">
+        <button id="theme-toggle" class="btn btn-remove" aria-label="Toggle theme">🌓</button>
+        <a id="account-btn" class="btn btn-remove" href="account.html" aria-label="Account">Account</a>
+    </div>
+</nav>
+
+<div class="container">
+    <h1>About</h1>
+    <p class="page-subtitle">StudyPlanner - Personal Study Dashboard</p>
+
+    <div class="card about-body">
+        <p>
+            StudyPlanner is a personal study dashboard designed to help students stay organized,
+            manage subjects, plan timetables, track pomodoro sessions and keep on top of tasks.
+            It gives you a clear revision overview and countdowns for important exam dates.
+        </p>
+        <p>
+            This website was built as an independent project, using only HTML, CSS, and vanilla JavaScript.
+            It stores your data locally in the browser with <code>localStorage</code>, so your study plan stays
+            available without requiring a server or external database.
+        </p>
+        <p>
+            I am Salaar Adnan Shekhani, a Grade 9 student as of Spring 2026. I am passionate about programming
+            and enjoy building tangible projects like these, constantly working to expand my computer science and web development skills.
+        </p>
+        <p>
+            StudyPlanner reflects my focus on practical solutions for everyday challenges. It was created to make
+            planning, goal-setting and revision easier for students who want to study smarter and stay on track.
+        </p>
+
+        <hr>
+
+        <p style="color:var(--muted);font-size:0.875rem;">
+            Built with HTML and CSS.<br>
+            Data stored locally in your browser via <code>localStorage</code>.
+        </p>
+    </div>
+</div>
+
+<footer>Made by <span>Salaar Adnan Shekhani</span></footer>
+<script src="theme-toggle.js"></script>
+<script src="auth.js"></script>
+</body>
+</html>
