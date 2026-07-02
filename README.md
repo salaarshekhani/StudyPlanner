@@ -3,6 +3,7 @@
 [![Flask](https://img.shields.io/badge/Flask-2.0%2B-000000?logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
 [![Database](https://img.shields.io/badge/database-SQLite-003B57?logo=sqlite&logoColor=white)](#project-structure)
 [![Frontend](https://img.shields.io/badge/frontend-HTML%2FCSS%2FJS-E34F26?logo=html5&logoColor=white)](#project-structure)
+[![Made for Hack Club Horizons](https://img.shields.io/badge/made%20for-%23Horizons-ec3750?logo=hackclub&logoColor=white)](https://horizons.hackclub.com/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 [![Status](https://img.shields.io/badge/status-active_development-brightgreen)](#whats-new)
 
@@ -22,6 +23,8 @@
 ## About
 
 StudyPlanner is a cross-device, browser-based productivity tool built for students to manage their academic workload in one place. It combines subject tracking, a weekly timetable, a to-do list, exam and reminder scheduling, and a Pomodoro-style focus timer behind a single lightweight Flask backend, with account sync so a student's state follows them across devices.
+
+Built for [Hack Club Horizons](https://horizons.hackclub.com/), a summer coding marathon for high schoolers.
 
 The project is intentionally minimal in its dependency footprint. A single-file Flask server backed by SQLite handles authentication and state persistence, while the frontend is plain HTML, CSS, and vanilla JavaScript with no build step or framework required. This keeps the whole application easy to run locally, easy to read end to end, and easy to extend.
 
@@ -142,11 +145,13 @@ Passwords are stored as SHA-256 hashes. For production use beyond local or perso
 
 ## Feedback and Contributions
 
-This is a personal school productivity project, actively evolving alongside real day-to-day use made for #horizons. Bug reports, feature ideas, and pull requests are welcome. Feel free to open an issue or fork the repository and submit changes.
+This is a personal school productivity project, actively evolving alongside real day-to-day use. Bug reports, feature ideas, and pull requests are welcome. Feel free to open an issue or fork the repository and submit changes.
 
 ## License
 
 This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). See [LICENSE](LICENSE) for the full text.
+
+The AGPL is a strong copyleft license: anyone who runs a modified version of this software as a network service must make the corresponding source code available to its users, and any distributed copy or derivative must remain under the same license. This does not legally prohibit resale outright (no OSI-approved open source license can), but it requires that the source always stay freely available alongside it, which makes closed commercial resale impractical in practice.
 
 ## Contacts
 
