@@ -11,7 +11,9 @@
 - [About](#about)
 - [What's New](#whats-new)
 - [Features](#features)
+- [How to Use](#how-to-use)
 - [How to Install](#how-to-install)
+- [How It Works](#how-it-works)
 - [Project Structure](#project-structure)
 - [API Reference](#api-reference)
 - [Data Model](#data-model)
@@ -61,6 +63,16 @@ Cross-cutting capabilities shared across pages:
 - Offline-friendly fallback: state also persists to `localStorage` so the app remains usable without an account
 - Theming: a single `data-theme` attribute driven by `theme-toggle.js`
 
+## How to Use
+
+1. **Create an account.** Open the Account page, choose a username and password, and register. A token is issued and stored in the browser so the app stays signed in.
+2. **Add your subjects.** On the Subjects page, add each subject you are studying. Subjects are the building block every other page organizes around.
+3. **Build your timetable.** On the Timetable page, place study sessions for each subject across the week. Use the week navigation to plan ahead or look back at previous weeks.
+4. **Track tasks.** On the To-Do page, add tasks scoped to a subject and check them off as they are completed.
+5. **Run focus sessions.** On the Pomodoro page, set focus, short-break, and long-break durations and start a timer. Completed sessions are logged automatically and count toward your streak.
+6. **Check your progress.** The Overview page pulls everything together: subjects, upcoming sessions, and current and longest streaks, so you can see how consistent you have been at a glance.
+7. **Switch devices freely.** Because state is synced to the server on every change, logging in from a different browser or computer picks up exactly where you left off. If you are not logged in, everything still works and is saved locally in the browser instead.
+
 ## How to Install
 
 ```shell
@@ -78,6 +90,16 @@ python server.py
 The server starts on `http://0.0.0.0:5000` in debug mode and initializes `users.db` automatically on first run. Open `http://localhost:5000` in a browser to load the Overview page.
 
 No frontend build step is required. `index.html`, `style.css`, and the `.js` files are served directly by Flask via `send_from_directory`.
+
+## How It Works
+
+StudyPlanner is split into a thin Flask backend and a plain JavaScript frontend that share one JSON state object.
+
+**Backend (`server.py`).** Flask serves the static HTML, CSS, and JS files directly from disk, and exposes a small JSON API for accounts and state. On startup it opens (or creates) `users.db`, a SQLite file with a single `users` table holding a username, a hashed password, a saved state blob, and an auth token. Registration hashes the password with SHA-256, generates a random token with `uuid4`, and stores a default state for the new user. Login checks the password hash and hands back the stored token and state. Every authenticated request must include the `X-User` and `X-Auth-Token` headers, which the server checks against the `users` table before reading or writing state.
+
+**Frontend (`state.js`, `auth.js`, and the page scripts).** Each page loads `state.js`, which defines the shape of the app's state, computes derived values like streaks from `sessionHistory`, and reads and writes that state to `localStorage` so the app works even when signed out. `auth.js` wraps `fetch` calls to `/api/register`, `/api/login`, `/api/save-state`, and `/api/state` behind a small helper, attaches the auth headers automatically once a token exists, and merges local and remote state on login so nothing made offline is lost. Page-specific scripts embedded in each HTML file read and mutate the shared state object to render subjects, timetable slots, to-dos, and the Pomodoro timer, then call the same save routine to push changes back to the server.
+
+**Sync flow, in short.** A change on any page updates the in-memory state, writes it to `localStorage`, and (if logged in) posts it to `/api/save-state`. On login from a new device, `/api/login` returns the server's copy of the state, which is merged with whatever is already stored locally so the two never silently overwrite each other.
 
 ## Project Structure
 
