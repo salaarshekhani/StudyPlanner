@@ -151,8 +151,6 @@ This is a personal school productivity project, actively evolving alongside real
 
 This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). See [LICENSE](LICENSE) for the full text.
 
-The AGPL is a strong copyleft license: anyone who runs a modified version of this software as a network service must make the corresponding source code available to its users, and any distributed copy or derivative must remain under the same license. This does not legally prohibit resale outright (no OSI-approved open source license can), but it requires that the source always stay freely available alongside it, which makes closed commercial resale impractical in practice.
-
 ## Contacts
 
 For questions about StudyPlanner, feel free to open an issue on the repository or reach out directly.
