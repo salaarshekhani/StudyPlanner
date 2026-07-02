@@ -142,7 +142,7 @@ Passwords are stored as SHA-256 hashes. For production use beyond local or perso
 
 ## Feedback and Contributions
 
-This is a personal school productivity project, actively evolving alongside real day-to-day use. Bug reports, feature ideas, and pull requests are welcome. Feel free to open an issue or fork the repository and submit changes.
+This is a personal school productivity project, actively evolving alongside real day-to-day use made for #horizons. Bug reports, feature ideas, and pull requests are welcome. Feel free to open an issue or fork the repository and submit changes.
 
 ## License
 
